@@ -19,12 +19,18 @@ None yet!
 ## Dependencies
 ### Required
 BTRFS
+
 Timeshift
+
 Python 3+
+
 `systemd-ukify`
+
 ### Optional
 `sbsigntools`
+
 `sbctl`
+
 `efibootmgr`
 
 ## Installation
