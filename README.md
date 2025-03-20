@@ -9,7 +9,7 @@ Modern UEFI boot managers can remove the need for a separate bootloader, such as
 
 UKIs (Unified Kernel Images) combine the kernel, `initramfs`, and command line into a single ELF that the UEFI boot manager can load directly. When combined with secure boot and appropriate TPM/PCR policies, this can help to enhance overall security by providing a chain of trust in the boot process (assuming you trust the underlying firmware and UEFI). The embedded `initramfs` and command line become implicitly signed since the entire UKI is signed, so any changes will be measured by the UEFI, preventing any automatic unsealing of secrets from the TPM. As a result, tampering with the boot process becomes much more difficult, so Full Drive Encryption becomes more effective.
 
-[A UKI can contain profiles](https://uapi-group.org/specifications/specs/unified_kernel_image/) which are selected with a command line argument indicating the profile to load. These profiles can share elements, such as kernels and initrd, or have unique elements, like the command line. By leveraging multiple profiles, snapshots can be booted with just a change to the embedded command line in a profile (several bytes) instead of needing an entirely separate UKI (several hundred megabytes). This sharing of common resources makes it much more feasible to have many snapshots available, similarly to GRUB menuentries when using a tool like [`grub-btrfsd`](https://github.com/Antynea/grub-btrfs), but selected through the UEFI boot manager rather than a bootloader.
+[A UKI can contain profiles](https://uapi-group.org/specifications/specs/unified_kernel_image/) which are selected with a command line argument indicating the profile to load. These profiles can share elements, such as kernels and initrd, or have unique elements, like the command line. By leveraging multiple profiles, snapshots can be booted with just a change to the embedded command line in a profile (several bytes) instead of needing an entirely separate UKI (several hundred megabytes). This sharing of common resources makes it much more feasible to have many snapshots available, similarly to GRUB menuentries when using a tool like [`grub-btrfs`](https://github.com/Antynea/grub-btrfs), but selected through the UEFI boot manager rather than a bootloader.
 
 In my limited testing, booting a UKI was a couple seconds--almost 10%--quicker to load than a bootloader-based process, with tighter control over the kernel, `initramfs`, and command line.
 
@@ -54,4 +54,4 @@ Don't worry about it yet--it's not ready
   - [ ] [systemd service](https://github.com/Antynea/grub-btrfs/blob/master/grub-btrfsd.service)
      
 ## Acknowledgements
-The aforementioned [`grub-btrfsd`](https://github.com/Antynea/grub-btrfs) for being the inspiration behind this endeavor
+The aforementioned [`grub-btrfs`](https://github.com/Antynea/grub-btrfs) for being the inspiration behind this endeavor
