@@ -1,0 +1,55 @@
+#! /usr/bin/env python3
+
+################################################################################
+###                                 UKI BTRFS                                ###
+################################################################################
+# This script is intended to make the generation of multi-profile UKIs easier  #
+# by using a configuration file to drive the:                                  #
+#   - Kernel                                                                   #
+#   - Initramfs                                                                #
+#   - Command line                                                             #
+# for a single default and multiple fallback profiles. Currently, the tool     #
+# supports having one kernel for all profiles, two initramfs (one default and  #
+# one fallback), and a command line per profile. The structure, not including  #
+# other required sections, looks something like:                               #
+#   linux                                                                      #
+#   initramfs-fallback                                                         #
+#   profile0                                                                   #
+#   commandline0                                                               #
+#   profile1                                                                   #
+#   commandline1                                                               #
+#   profile2                                                                   #
+#   initramfs-default                                                          #
+#   commandline2                                                               #
+# Basic usage is to call the script, which expects the initramfs images to     #
+# be built by a separate utility, and let it build the UKI based on a config   #
+# file. Building the UKI depends on systemd-ukify.                             #
+################################################################################
+#                                Hari Ganti | 2025/03/19 | hariganti@gmail.com #
+################################################################################
+
+### IMPORTS ###
+import re
+import subprocess
+
+from datetime import datetime
+
+### FUNCTIONS ###
+def get_snapshot_subvolumes():
+  command   = ['sudo', 'btrfs', 'subvolume', 'list', '/']
+  pattern   = '(timeshift-btrfs/snapshots/.*/@)\n'
+  timefmt   = '%Y-%m-%d_%H-%M-%S'
+  p         = subprocess.run(command, capture_output = True, text = True)
+  snapshots = \
+  [
+    (x, datetime.strptime(x.split('/')[2], timefmt))
+    for x in re.findall(pattern, p.stdout)
+  ]
+
+  snapshots.sort(key = lambda x: x[1], reverse = True)
+  return [snapshot[0] for snapshot in snapshots]
+
+### MAIN ###
+if __name__ == '__main__':
+  snapshots = get_snapshot_subvolumes()
+  print(snapshots)
