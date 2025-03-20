@@ -30,6 +30,7 @@
 
 ### IMPORTS ###
 import re
+import os
 import subprocess
 
 from datetime import datetime
@@ -49,7 +50,21 @@ def get_snapshot_subvolumes():
   snapshots.sort(key = lambda x: x[1], reverse = True)
   return [snapshot[0] for snapshot in snapshots]
 
+def get_command_line_from_dir():
+  cmd     = ''
+  path    = '/etc/cmdline.d/'
+  entries = os.scandir(path)
+  for entry in entries:
+    if entry.name[-5:] == '.conf': # Ignore .baka or similar backup files
+      with open(path + entry.name, 'r') as file:
+        cmd += file.read().replace('\n', ' ')
+
+  return cmd.rstrip()
+
 ### MAIN ###
 if __name__ == '__main__':
   snapshots = get_snapshot_subvolumes()
   print(snapshots)
+
+  cmdline = get_command_line_from_dir()
+  print(cmdline)
