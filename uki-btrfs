@@ -41,10 +41,10 @@ def get_snapshot_subvolumes():
   pattern   = '(timeshift-btrfs/snapshots/.*/@)\n'
   timefmt   = '%Y-%m-%d_%H-%M-%S'
   snapshots = \
-  [
-    (x, datetime.strptime(x.split('/')[2], timefmt))
-    for x in re.findall(pattern, os.popen(command).read())
-  ]
+    [
+      (x, datetime.strptime(x.split('/')[2], timefmt))
+      for x in re.findall(pattern, os.popen(command).read())
+    ]
 
   return sorted(snapshots, key = lambda x: x[1], reverse = True)
 
@@ -68,13 +68,27 @@ def filter_snapshots(snapshots, filter = [0, 6, 29]):
 
   return snapf
 
+# Amend command lines with snapshot subvolumes
+def amend_command_line_subvols(cmdline, snapshots):
+  return \
+    [
+      cmdline.replace('subvol=@', 'subvol=' + snapshot)
+      for snapshot in snapshots
+    ]
+
 ### MAIN ###
 if __name__ == '__main__':
   snapshots = get_snapshot_subvolumes()
   # print(snapshots)
 
-  cmdline = make_command_line_from_dir(filter = '*.conf')
-  # print(cmdline)
+  default_cmdline = make_command_line_from_dir(filter = '*.conf')
+  print(default_cmdline)
+
+  fallback_cmdline = make_command_line_from_dir(filter = '*[!d].conf')
+  print(fallback_cmdline)
 
   filtered_snapshots = filter_snapshots(snapshots)
   print(*filtered_snapshots, sep = '\n')
+
+  backups = amend_command_line_subvols(fallback_cmdline, filtered_snapshots)
+  print(*backups, sep = '\n')
