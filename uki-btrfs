@@ -31,40 +31,50 @@
 ### IMPORTS ###
 import re
 import os
-import subprocess
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 ### FUNCTIONS ###
+# Get all subvolumes creates as snapshots
 def get_snapshot_subvolumes():
-  command   = ['sudo', 'btrfs', 'subvolume', 'list', '/']
+  command   = 'sudo btrfs subvolume list /'
   pattern   = '(timeshift-btrfs/snapshots/.*/@)\n'
   timefmt   = '%Y-%m-%d_%H-%M-%S'
-  p         = subprocess.run(command, capture_output = True, text = True)
   snapshots = \
   [
     (x, datetime.strptime(x.split('/')[2], timefmt))
-    for x in re.findall(pattern, p.stdout)
+    for x in re.findall(pattern, os.popen(command).read())
   ]
 
-  snapshots.sort(key = lambda x: x[1], reverse = True)
-  return [snapshot[0] for snapshot in snapshots]
+  return sorted(snapshots, key = lambda x: x[1], reverse = True)
 
-def get_command_line_from_dir():
-  cmd     = ''
-  path    = '/etc/cmdline.d/'
-  entries = os.scandir(path)
-  for entry in entries:
-    if entry.name[-5:] == '.conf': # Ignore .baka or similar backup files
-      with open(path + entry.name, 'r') as file:
-        cmd += file.read().replace('\n', ' ')
+# Make a command line from the specified files in the given directory
+def make_command_line_from_dir(path = '/etc/cmdline.d/', filter = '*'):
+  command = 'echo $(cat ' + path + filter + ')'
+  return os.popen(command).read().rstrip()
 
-  return cmd.rstrip()
+# Filter snapshot list to specified intervals
+def filter_snapshots(snapshots, filter = [0, 6, 29]):
+  cur   = 0
+  now   = datetime.now() - timedelta(minutes = 1) # 1 minute leeway for snapshot timing
+  snapf = list()
+  for snapshot in snapshots:
+    td = now - snapshot[1]
+    if td.days >= filter[cur]:
+      snapf.append(snapshot[0])
+      cur += 1
+      if cur == len(filter):
+        break
+
+  return snapf
 
 ### MAIN ###
 if __name__ == '__main__':
   snapshots = get_snapshot_subvolumes()
-  print(snapshots)
+  # print(snapshots)
 
-  cmdline = get_command_line_from_dir()
-  print(cmdline)
+  cmdline = make_command_line_from_dir(filter = '*.conf')
+  # print(cmdline)
+
+  filtered_snapshots = filter_snapshots(snapshots)
+  print(*filtered_snapshots, sep = '\n')
