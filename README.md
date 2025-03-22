@@ -24,6 +24,8 @@ Timeshift
 
 Python 3+
 
+`sudo`
+
 `systemd-ukify`
 
 ### Optional
