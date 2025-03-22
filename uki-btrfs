@@ -57,24 +57,69 @@ def make_command_line_from_dir(path = '/etc/cmdline.d/', filter = '*'):
 def filter_snapshots(snapshots, filter = [0, 6, 29]):
   cur   = 0
   now   = datetime.now() - timedelta(minutes = 1) # 1 minute leeway for snapshot timing
-  snapf = list()
+  snaps = list()
   for snapshot in snapshots:
-    td = now - snapshot[1]
-    if td.days >= filter[cur]:
-      snapf.append(snapshot[0])
+    if (now - snapshot[1]).days >= filter[cur]:
+      snaps.append(snapshot[0])
       cur += 1
       if cur == len(filter):
         break
 
-  return snapf
+  return snaps
 
 # Amend command lines with snapshot subvolumes
-def amend_command_line_subvols(cmdline, snapshots):
+def amend_command_line_subvols(cmdline, subvols):
   return \
     [
-      cmdline.replace('subvol=@', 'subvol=' + snapshot)
-      for snapshot in snapshots
+      cmdline.replace('subvol=@', 'subvol=' + subvol)
+      for subvol in subvols
     ]
+
+# Build UKI according to the pattern described at the top
+# TODO: Take one or more dictionaries of cmdlines and initrds
+def build_uki(default, backup):
+  tmpcmd = 'mktemp'
+  config = os.popen(tmpcmd).read().rstrip()
+  print('Config file: ' + config + '\n')
+  names = ['1 Day', '7 Day', '30 Day']
+  bckps = len(backup)
+  profs = [0] * (bckps)
+  for i in range(1, bckps):
+    profs[i - 1]  = os.popen(tmpcmd).read().rstrip()
+    print('Profile at: ' + profs[i - 1])
+    command       = 'ukify build '                              \
+      '--config='         + config    + ' '                     \
+      '--profile="TITLE=' + names[i]  + ' ID=' + str(i) + '" '  \
+      '--cmdline="'       + backup[i] + '" '                    \
+      '--output='         + profs[i - 1]
+
+    print(os.popen(command).read())
+
+  profs[-1] = os.popen(tmpcmd).read().rstrip()
+  print('Profile at: ' + profs[-1])
+  command   = 'ukify build '                                \
+    '--config='         + config    + ' '                   \
+    '--profile="TITLE=Default id='  + str(bckps) + '" '     \
+    '--initrd=/boot/initramfs-linux.img '                   \
+    '--cmdline="'       + default   + '" '                  \
+    '--splash=/usr/share/systemd/bootctl/splash-arch.bmp '  \
+    '--output='         + profs[-1]
+
+  print(os.popen(command).read())
+
+  command = 'sudo ukify build '                       \
+    '--linux=/boot/vmlinuz-linux '                    \
+    '--profile="TITLE=' + names[0]  + ' ID=0' + '" '  \
+    '--initrd=/boot/initramfs-linux-fallback.img '    \
+    '--cmdline="'       + backup[0] + '" '
+
+  for profile in profs:
+    command += '--join-profile=' + profile + ' '
+
+  command += '--output=./output/uki.efi'
+
+  print(os.popen(command).read())
+  return
 
 ### MAIN ###
 if __name__ == '__main__':
@@ -82,13 +127,15 @@ if __name__ == '__main__':
   # print(snapshots)
 
   default_cmdline = make_command_line_from_dir(filter = '*.conf')
-  print(default_cmdline)
+  # print(default_cmdline)
 
-  fallback_cmdline = make_command_line_from_dir(filter = '*[!d].conf')
-  print(fallback_cmdline)
+  fallback_cmdline_base = make_command_line_from_dir(filter = '*[!d].conf')
+  # print(fallback_cmdline)
 
-  filtered_snapshots = filter_snapshots(snapshots)
-  print(*filtered_snapshots, sep = '\n')
+  subvols = filter_snapshots(snapshots)
+  # print(*subvols, sep = '\n')
 
-  backups = amend_command_line_subvols(fallback_cmdline, filtered_snapshots)
-  print(*backups, sep = '\n')
+  backup_cmdline = amend_command_line_subvols(fallback_cmdline_base, subvols)
+  # print(*backup_cmdline, sep = '\n')
+
+  build_uki(default_cmdline, backup_cmdline)
